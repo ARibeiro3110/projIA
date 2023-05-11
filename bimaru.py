@@ -34,23 +34,49 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
+    def __init__(self, rows, columns, grid) -> None:
+        self.rows = rows
+        self.columns = columns
+        self.grid = grid
+    
+    def __str__(self) -> str:
+        string = '\n'.join([' '.join(row) for row in self.grid])
+        string += "\n\nRows:     " + ' '.join(str(row) for row in self.rows) # TODO Remover
+        string += "\nColumns:  " + ' '.join(str(col) for col in self.columns) # TODO Remover
+        return string
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
-        # TODO
-        pass
+        if row < 0 or col < 0 or row > 9 or col > 9 or self.grid[row][col] == '.':
+            return None
+        return self.grid[row][col]
 
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
-        # TODO
-        pass
+        return (self.get_value(row - 1, col), self.get_value(row + 1, col))
 
     def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
-        # TODO
-        pass
+        return (self.get_value(row, col - 1), self.get_value(row + 1, col + 1))
+
+    def get_row_pieces(self, row : int) -> int:
+        # TODO Docstring
+        return 10 - self.grid[row].count('.')
+
+    def get_column_pieces(self, col : int) -> int:
+        # TODO Docstring
+        return 10 - sum(1 for row in self.grid if row[col] == '.')
+
+    def is_row_maximized(self, row : int) -> bool:
+        # TODO Docstring
+        return self.get_row_pieces(row) == self.rows[row]
+
+    def is_column_maximized(self, col : int) -> bool:
+        # TODO Docstring
+        return self.get_column_pieces(col) == self.columns[col]
+
 
     @staticmethod
     def parse_instance():
@@ -63,10 +89,23 @@ class Board:
             > from sys import stdin
             > line = stdin.readline().split()
         """
-        # TODO
-        pass
+        rows = sys.stdin.readline().split()[1:]
+        rows = [eval(row) for row in rows]
 
-    # TODO: outros metodos da classe
+        columns = sys.stdin.readline().split()[1:]
+        columns = [eval(col) for col in columns]
+        
+        hints = eval(sys.stdin.readline().split()[0])
+
+        grid = [['.'] * 10 for _ in range(10)]
+
+        for _ in range(hints):
+            hint = sys.stdin.readline().split()
+            row = eval(hint[1])
+            col = eval(hint[2])
+            grid[row][col] = hint[3]
+        
+        return Board(rows, columns, grid)
 
 
 class Bimaru(Problem):
@@ -110,4 +149,7 @@ if __name__ == "__main__":
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
+    board = Board.parse_instance()
+    print(board)
+    
     pass
