@@ -38,7 +38,7 @@ class Board:
         self.rows = rows
         self.columns = columns
         self.grid = grid
-    
+
     def __str__(self) -> str:
         string = '\n'.join([' '.join(row) for row in self.grid])
         string += "\n\nRows:     " + ' '.join(str(row) for row in self.rows) # TODO Remover
@@ -50,6 +50,18 @@ class Board:
         if row < 0 or col < 0 or row > 9 or col > 9 or self.grid[row][col] == '.':
             return None
         return self.grid[row][col]
+    
+    def is_empty(self, row: int, col: int) -> bool:
+        """ Devolve True se a posição estiver vazia, False caso contrário."""
+        if row < 0 or col < 0 or row > 9 or col > 9:
+            return False
+        return self.grid[row][col] == '.'
+    
+    def set_value(self, row: int, col: int, value: str) -> None:
+        """Define o valor na respetiva posição do tabuleiro."""
+        if row < 0 or col < 0 or row > 9 or col > 9:
+            return
+        self.grid[row][col] = value
 
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
@@ -62,19 +74,19 @@ class Board:
         return (self.get_value(row, col - 1), self.get_value(row + 1, col + 1))
 
     def get_row_pieces(self, row : int) -> int:
-        # TODO Docstring
-        return 10 - self.grid[row].count('.')
+        """Devolve o número de peças na linha."""
+        return 10 - self.grid[row].count('.') - self.grid[row].count('W') - self.grid[row].count('w')
 
     def get_column_pieces(self, col : int) -> int:
-        # TODO Docstring
-        return 10 - sum(1 for row in self.grid if row[col] == '.')
+        """Devolve o número de peças na coluna."""
+        return 10 - sum(1 for row in self.grid if row[col] in ('.', 'W', 'w'))
 
-    def is_row_maximized(self, row : int) -> bool:
-        # TODO Docstring
+    def is_row_complete(self, row : int) -> bool:
+        """Devolve True se a linha estiver completa e False caso contrário."""
         return self.get_row_pieces(row) == self.rows[row]
 
-    def is_column_maximized(self, col : int) -> bool:
-        # TODO Docstring
+    def is_column_complete(self, col : int) -> bool:
+        """Devolve True se a coluna estiver completa e False caso contrário."""
         return self.get_column_pieces(col) == self.columns[col]
 
 
@@ -104,14 +116,15 @@ class Board:
             row = eval(hint[1])
             col = eval(hint[2])
             grid[row][col] = hint[3]
-        
+
         return Board(rows, columns, grid)
 
 
 class Bimaru(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
-        # TODO
+        self.initial = BimaruState(board)
+        self.initial = self.initial_clear()
         pass
 
     def actions(self, state: BimaruState):
@@ -139,6 +152,42 @@ class Bimaru(Problem):
         """Função heuristica utilizada para a procura A*."""
         # TODO
         pass
+    
+    def initial_clear(self) -> None:
+        board = self.initial.board
+        
+        # Preencher linhas e colunas maximizadas com água
+        for i in range(10):
+            if board.is_row_complete(i):
+                for j in range(10):
+                    if board.is_empty(i, j):
+                        board.set_value(i, j, 'w')
+            if board.is_column_complete(i):
+                for j in range(10):
+                    if board.is_empty(j ,i):
+                        board.set_value(j, i, 'w')
+        
+        # Rodear barcos com água
+        neighbours = []
+        for i in range(10):
+            for j in range(10):
+                if board.grid[i][j] == 'C':
+                    neighbours += [(i-1, j), (i+1, j), (i, j-1), (i, j+1), (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]
+                if board.grid[i][j] == 'T':
+                    neighbours += [(i-1, j), (i-1, j-1), (i, j-1), (i+1, j-1), (i+2, j-1), (i-1, j+1), (i, j+1), (i+1, j+1), (i+2, j+1)]
+                if board.grid[i][j] == 'L':
+                    neighbours += [(i, j-1), (i-1, j-1), (i-1, j), (i-1, j+1), (i-1, j+2), (i+1, j-1), (i+1, j), (i+1, j+1), (i+1, j+2)]
+                if board.grid[i][j] == 'B':
+                    neighbours += [(i+1, j), (i+1, j-1), (i, j-1), (i-1, j-1), (i-2, j-1), (i+1, j+1), (i, j+1), (i-1, j+1), (i-2, j+1)]
+                if board.grid[i][j] == 'R':
+                    neighbours += [(i, j+1), (i-1, j+1), (i-1, j), (i-1, j-1), (i-1, j-2), (i+1, j+1), (i+1, j), (i+1, j-1), (i+1, j-2)]
+                if board.grid[i][j] == 'M':
+                    neighbours += [(i-1, j-1), (i+1, j-1), (i+1, j+1), (i-1, j+1)]
+        
+        for neighbour_i, neighbour_j in neighbours:
+            if board.is_empty(neighbour_i, neighbour_j):
+                board.set_value(neighbour_i, neighbour_j, 'w')
+        
 
     # TODO: outros metodos da classe
 
@@ -150,6 +199,7 @@ if __name__ == "__main__":
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
     board = Board.parse_instance()
+    print(board, '\n')
+    problem = Bimaru(board)
+    s0 = BimaruState(board)
     print(board)
-    
-    pass
