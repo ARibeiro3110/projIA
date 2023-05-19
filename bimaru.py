@@ -40,9 +40,13 @@ class Board:
         self.grid = grid
 
     def __str__(self) -> str:
-        string = '\n'.join([' '.join(row) for row in self.grid])
-        string += "\n\nRows:     " + ' '.join(str(row) for row in self.rows) # TODO Remover
-        string += "\nColumns:  " + ' '.join(str(col) for col in self.columns) # TODO Remover
+        string = ""
+        for i in range(10):
+            string += ' '.join(self.grid[i]) + '   ' + str(self.rows[i]) + '\n'
+        string += '\n'
+        for i in range(10):
+            string += str(self.columns[i]) + ' '
+        
         return string
 
     def get_value(self, row: int, col: int) -> str:
@@ -63,12 +67,12 @@ class Board:
             return
         self.grid[row][col] = value
 
-    def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
+    def adjacent_vertical_values(self, row: int, col: int):# -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
         return (self.get_value(row - 1, col), self.get_value(row + 1, col))
 
-    def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
+    def adjacent_horizontal_values(self, row: int, col: int):# -> (str, str):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
         return (self.get_value(row, col - 1), self.get_value(row + 1, col + 1))
