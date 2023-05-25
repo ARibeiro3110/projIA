@@ -21,6 +21,7 @@ from search import (
 class BimaruState:
     state_id = 0
     boats = {1 : 4, 2 : 3, 3 : 2, 4 : 1} # Barcos disponíveis
+    boats_possible_actions = {1 : [], 2 : [], 3 : [], 4 : []}
 
     def __init__(self, board):
         self.board = board
@@ -101,70 +102,41 @@ class Board:
         """Devolve True se a coluna estiver completa e False caso contrário."""
         return self.get_column_pieces(col) == self.columns[col]
 
-    def possible_1_boat_actions(self) -> list:
-        """Devolve uma lista com as posições livres para colocar um barco de tamanho 1."""
-        actions = []
-        for i in range(10):
-            for j in range(10):
-                if self.is_empty(i, j) and \
-                    self.get_value(i-1, j) in ('W', 'w', None) and \
-                    self.get_value(i+1, j) in ('W', 'w', None) and \
-                    self.get_value(i, j-1) in ('W', 'w', None) and \
-                    self.get_value(i, j+1) in ('W', 'w', None):
-
-                    actions += [((i, j), 1, 'H')]
-        
-        return actions
-        
-    def possible_2_boat_actions(self) -> list:
-        """Devolve uma lista com as posições livres para colocar um barco de tamanho 2."""
+    def possible_n_boat_actions(self, n : int) -> list:
+        """Devolve uma lista com as posições livres para colocar um barco de tamanho n."""
         actions = []
 
         for i in range(10):
-            if self.get_free_row_positions(i) < 2:
+            if self.get_free_row_positions(i) < n:
                 continue
-            for j in range(9):
-                if (self.get_value(i, j) in ('L', None) and \
-                    self.get_value(i, j+1) in ('R', None) and \
+            for j in range(10 - n + 1):
+                if self.get_value(i, j) in ('L', None) and \
+                    self.get_value(i, j+n-1) in ('R', None) and \
                     self.get_value(i, j-1) in ('W', 'w', None) and \
-                    self.get_value(i, j+2) in ('W', 'w', None)):
+                    self.get_value(i, j+n) in ('W', 'w', None) and \
+                    self.get_value(i, j-2) != 'L' and \
+                    self.get_value(i, j+n+1) != 'R':
 
-                    actions += [((i, j), 2, 'H')]
+                    if n > 2 and self.get_value(i, j+1) in ('M', None):
+                        if n > 3 and self.get_value(i, j+2) in ('M', None):
+                            actions += [((i, j), n, 'H')]
  
         for j in range(10):
-            if self.get_free_column_positions(j) < 2:
+            if self.get_free_column_positions(j) < n:
                 continue
-            for i in range(9):
-                if (self.get_value(i, j) in ('T', None) and \
-                    self.get_value(i+1, j) in ('B', None) and \
+            for i in range(10 - n + 1):
+                if self.get_value(i, j) in ('T', None) and \
+                    self.get_value(i+n-1, j) in ('B', None) and \
                     self.get_value(i-1, j) in ('W', 'w', None) and \
-                    self.get_value(i+2, j) in ('W', 'w', None)):
+                    self.get_value(i+n, j) in ('W', 'w', None) and \
+                    self.get_value(i-2, j) != 'T' and \
+                    self.get_value(i+n+1, j) != 'B':
                     
-                    actions += [((i, j), 2, 'V')]
+                    if n > 2 and self.get_value(i+1, j) in ('M', None):
+                        if n > 3 and self.get_value(i+2, j) in ('M', None):
+                            actions += [((i, j), n, 'V')]
 
         return actions
-
-    # def possible_3_boat_actions(self) -> list:
-    #     """Devolve uma lista com as posições livres para colocar um barco de tamanho 3."""
-    #     actions = []
-    #     for i in range(10):
-    #         for j in range(10 if i < 8 else 8):
-    #             if self.is_empty(i, j) and self.is_empty(i, j+1) and self.is_empty(i, j+2):
-    #                 actions += [((i, j), 3, 'H')]
-    #             if self.is_empty(j, i) and self.is_empty(j+1, i) and self.is_empty(j+2, i):
-    #                 actions += [((j, i), 3, 'V')]
-    #     return actions
-
-    # def possible_4_boat_actions(self) -> list:
-    #     """Devolve uma lista com as posições livres para colocar um barco de tamanho 4."""
-    #     actions = []
-    #     for i in range(10):
-    #         for j in range(10 if i < 7 else 7):
-    #             if self.is_empty(i, j) and self.is_empty(i, j+1) and self.is_empty(i, j+2) and self.is_empty(i, j+3):
-    #                 actions += [((i, j), 4, 'H')]
-    #             if self.is_empty(i, j) and self.is_empty(i+1, j) and self.is_empty(i+2, j) and self.is_empty(i+3, j):
-    #                 actions += [((i, j), 4, 'V')]
-    #     return actions
 
     @staticmethod
     def parse_instance():
@@ -200,20 +172,17 @@ class Bimaru(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         self.initial = BimaruState(board)
-        self.initial = self.initial_clear()
+        self.initial_clear()
+        self.initial_possible_actions()
         pass
 
     def actions(self, state: BimaruState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
-        if state.boats[4] > 0:
-            return state.board.possible_4_boat_actions()
-        elif state.boats[3] > 0:
-            return state.board.possible_3_boat_actions()
-        elif state.boats[2] > 0:
-            return state.board.possible_2_boat_actions()
-        elif state.boats[1] > 0:
-            return state.board.possible_1_boat_actions()
+        for n in range(4, 0, -1):
+            if state.boats[n] > 0:
+                return state.boats_possible_actions(n)
+        # TODO se sair do for loop estão todos colocados
 
     def result(self, state: BimaruState, action):
         """Retorna o estado resultante de executar a 'action' sobre
@@ -295,6 +264,10 @@ class Bimaru(Problem):
         for (neighbour_i, neighbour_j) in neighbours:
             if board.is_empty(neighbour_i, neighbour_j):
                 board.set_value(neighbour_i, neighbour_j, 'w')
+    
+    def initial_possible_actions(self) -> None:
+        for i in range(1, 5):
+            self.initial.boats_possible_actions[i] = board.possible_n_boat_actions(i)
 
     # TODO: outros metodos da classe
 
@@ -311,14 +284,7 @@ if __name__ == "__main__":
     s0 = BimaruState(board)
     print(board)
 
-    # print("### 1-boat ###")
-    # for action in s0.board.possible_1_boat_actions():
-    #     print(action)
-    print("### 2-boat ###")
-    for action in s0.board.possible_2_boat_actions():
+    n = 4
+    print(f"\n### {n}-boat ###")
+    for action in s0.boats_possible_actions[n]:
         print(action)
-    # print("### 3-boat ###")
-    # for action in s0.board.possible_3_boat_actions():
-    #     print(action)
-    # print("### 4-boat ###")
-    # for action in s0.board.possible_4_boat_actions():
