@@ -43,6 +43,7 @@ class Board:
 
     def __str__(self) -> str:
         string = ""
+        # TODO trocar as aguas para pontos aqui
         for i in range(10):
             string += ' '.join(self.grid[i]) + '   ' + str(self.rows[i]) + '\n'
         string += '\n'
@@ -68,12 +69,12 @@ class Board:
             return
         self.grid[row][col] = value
 
-    def adjacent_vertical_values(self, row: int, col: int):# -> (str, str):
+    def adjacent_vertical_values(self, row: int, col: int):# -> (str, str): TODO
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
         return (self.get_value(row - 1, col), self.get_value(row + 1, col))
 
-    def adjacent_horizontal_values(self, row: int, col: int):# -> (str, str):
+    def adjacent_horizontal_values(self, row: int, col: int):# -> (str, str): TODO
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
         return (self.get_value(row, col - 1), self.get_value(row + 1, col + 1))
@@ -106,6 +107,13 @@ class Board:
         """Devolve uma lista com as posições livres para colocar um barco de tamanho n."""
         actions = []
 
+        if n == 1:
+            for i in range(10):
+                for j in range(10):
+                    if self.get_value(i, j) == '.':
+                        actions += [((i, j), n, 'H')]
+            return actions
+
         for i in range(10):
             if self.get_free_row_positions(i) < n:
                 continue
@@ -117,9 +125,12 @@ class Board:
                     self.get_value(i, j-2) != 'L' and \
                     self.get_value(i, j+n+1) != 'R':
 
-                    if n > 2 and self.get_value(i, j+1) in ('M', None):
-                        if n > 3 and self.get_value(i, j+2) in ('M', None):
-                            actions += [((i, j), n, 'H')]
+                    if n > 2 and not self.get_value(i, j+1) in ('M', None):
+                        continue
+                    if n > 3 and not self.get_value(i, j+2) in ('M', None):
+                        continue
+
+                    actions += [((i, j), n, 'H')]
  
         for j in range(10):
             if self.get_free_column_positions(j) < n:
@@ -132,11 +143,58 @@ class Board:
                     self.get_value(i-2, j) != 'T' and \
                     self.get_value(i+n+1, j) != 'B':
                     
-                    if n > 2 and self.get_value(i+1, j) in ('M', None):
-                        if n > 3 and self.get_value(i+2, j) in ('M', None):
-                            actions += [((i, j), n, 'V')]
+                    if n > 2 and not self.get_value(i+1, j) in ('M', None):
+                        continue
+                    if n > 3 and self.get_value(i+2, j) in ('M', None):
+                        continue
+                    
+                    actions += [((i, j), n, 'V')]
 
         return actions
+    
+    def set_n_boat(self, row : int, col : int, n : int, orientation : int) -> None: # TODO tipo da orientation?
+        """Insere um barco de tamanho n a começar nas coordenadas (row, col),
+        com orientação horizontal ou vertical."""
+        if n == 1:
+            if self.get_value(row, col)         == None: self.set_value(row, col, 'c')
+        elif n == 2:
+            if orientation == 'H':
+                if self.get_value(row, col)     == None: self.set_value(row, col, 'l')
+                if self.get_value(row, col + 1) == None: self.set_value(row, col + 1, 'r')
+            elif orientation == 'V':
+                if self.get_value(row, col)     == None: self.set_value(row, col, 't')
+                if self.get_value(row + 1, col) == None: self.set_value(row + 1, col, 'b')
+        elif n == 3:
+            if orientation == 'H':
+                if self.get_value(row, col)     == None: self.set_value(row, col, 'l')
+                if self.get_value(row, col + 1) == None: self.set_value(row, col + 1, 'm')
+                if self.get_value(row, col + 2) == None: self.set_value(row, col + 2, 'r')
+            elif orientation == 'V':
+                if self.get_value(row, col)     == None: self.set_value(row, col, 't')
+                if self.get_value(row + 1, col) == None: self.set_value(row + 1, col, 'm')
+                if self.get_value(row + 2, col) == None: self.set_value(row + 2, col, 'b')
+        elif n == 4:
+            if orientation == 'H':
+                if self.get_value(row, col)     == None: self.set_value(row, col, 'l')
+                if self.get_value(row, col + 1) == None: self.set_value(row, col + 1, 'm')
+                if self.get_value(row, col + 2) == None: self.set_value(row, col + 2, 'm')
+                if self.get_value(row, col + 3) == None: self.set_value(row, col + 3, 'r')
+            elif orientation == 'V':
+                if self.get_value(row, col)     == None: self.set_value(row, col, 't')
+                if self.get_value(row + 1, col) == None: self.set_value(row + 1, col, 'm')
+                if self.get_value(row + 2, col) == None: self.set_value(row + 2, col, 'm')
+                if self.get_value(row + 3, col) == None: self.set_value(row + 3, col, 'b')
+        else: print("PROBLEMA no set_n_boat") # TODO remover
+
+        if orientation == 'H':
+            for i in range(row - 1, row + n):
+                for j in range(col - 1, col + 1):
+                    if self.get_value(i, j) == None: self.set_value(i, j, 'w')
+        elif orientation == 'V':
+            for j in range(col - 1, col + n):
+                for i in range(row - 1, row + 1):
+                    if self.get_value(i, j) == None: self.set_value(i, j, 'w')
+
 
     @staticmethod
     def parse_instance():
@@ -149,18 +207,23 @@ class Board:
             > from sys import stdin
             > line = stdin.readline().split()
         """
-        rows = sys.stdin.readline().split()[1:]
+        f = open("instances/instance01.txt", "r")
+        # rows = sys.stdin.readline().split()[1:]
+        rows = f.readline().split()[1:]
         rows = [eval(row) for row in rows]
 
-        columns = sys.stdin.readline().split()[1:]
+        # columns = sys.stdin.readline().split()[1:]
+        columns = f.readline().split()[1:]
         columns = [eval(col) for col in columns]
         
-        hints = eval(sys.stdin.readline().split()[0])
+        # hints = eval(sys.stdin.readline().split()[0])
+        hints = eval(f.readline().split()[0])
 
         grid = [['.'] * 10 for _ in range(10)]
 
         for _ in range(hints):
-            hint = sys.stdin.readline().split()
+            # hint = sys.stdin.readline().split()
+            hint = f.readline().split()
             row = eval(hint[1])
             col = eval(hint[2])
             grid[row][col] = hint[3]
@@ -174,31 +237,51 @@ class Bimaru(Problem):
         self.initial = BimaruState(board)
         self.initial_clear()
         self.initial_possible_actions()
-        pass
 
     def actions(self, state: BimaruState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         for n in range(4, 0, -1):
             if state.boats[n] > 0:
-                return state.boats_possible_actions(n)
-        # TODO se sair do for loop estão todos colocados
+                return state.boats_possible_actions[n]
+        else: print("PROBLEMA no actions") # TODO remover
 
     def result(self, state: BimaruState, action):
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
+        i = action[0][0]
+        j = action[0][1]
+        n = action[1]
+        orientation = action[2]
+
+        board = Board(state.board.rows, state.board.columns, [[v for v in row] for row in state.board.grid])
+        board.set_n_boat(i, j, n, orientation)
+
+        new_state = BimaruState(board)
+        new_state.boats = {i : state.boats[i] for i in state.boats.keys()}
+        new_state.boats_possible_actions = {i : [((a,b),c,d) for ((a,b),c,d) in state.boats_possible_actions[i]] for i in state.boats_possible_actions.keys()}
+        new_state.boats[n] -= 1
+
+        if new_state.boats[n] == 0:
+            new_state.boats_possible_actions[n] = []
+        else:
+            new_state.boats_possible_actions[n].remove(action) # TODO falta remover as ações que são incompativeis
+
+        return new_state
+        
+        # alterar o valor das linhas e colunas para nao ter de correr as funcoes de get_row_positions ?
+
         # TODO
         # action = (row, col, boat, orientation)
-        pass
 
     def goal_test(self, state: BimaruState):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        for _ in range(10):
-            if not state.board.is_row_complete() or not state.board.is_column_complete():
+        for i in range(10):
+            if not state.board.is_row_complete(i) or not state.board.is_column_complete(i):
                 return False
         
         for number in state.boats:
@@ -270,6 +353,7 @@ class Bimaru(Problem):
             self.initial.boats_possible_actions[i] = board.possible_n_boat_actions(i)
 
     # TODO: outros metodos da classe
+    # TODO: rever incoerencia na utilizacao de (i, j) e (row, col)
 
 
 if __name__ == "__main__":
@@ -281,10 +365,13 @@ if __name__ == "__main__":
     board = Board.parse_instance()
     print(board, '\n')
     problem = Bimaru(board)
-    s0 = BimaruState(board)
-    print(board)
+    goal_node = depth_first_tree_search(problem)
+    print("Is goal?", problem.goal_test(goal_node.state))
+    print("Solution:\n", goal_node.state.board.print(), sep="")
 
-    n = 4
-    print(f"\n### {n}-boat ###")
-    for action in s0.boats_possible_actions[n]:
-        print(action)
+    # s0 = BimaruState(board)
+    # print(board)
+    # n = 4
+    # print(f"\n### {n}-boat ###")
+    # for action in s0.boats_possible_actions[n]:
+    #     print(action)
