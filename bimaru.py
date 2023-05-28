@@ -21,7 +21,6 @@ from search import (
 class BimaruState:
     state_id = 0
     boats = {1 : 4, 2 : 3, 3 : 2, 4 : 1} # Barcos disponíveis
-    boats_possible_actions = {1 : [], 2 : [], 3 : [], 4 : []}
 
     def __init__(self, board):
         self.board = board
@@ -43,9 +42,23 @@ class Board:
 
     def __str__(self) -> str:
         string = ""
-        # TODO trocar as aguas para pontos aqui
+
+        # # TODO trocar as aguas para pontos aqui
+        # for i in range(10):
+        #     string += ' '.join(self.grid[i]) + '   ' + str(self.rows[i]) + '\n'
+        # string += '\n'
+        # for i in range(10):
+        #     string += str(self.columns[i]) + ' '
+        # return string
+
+        grid = [[v for v in row] for row in self.grid]
         for i in range(10):
-            string += ' '.join(self.grid[i]) + '   ' + str(self.rows[i]) + '\n'
+            for j in range(10):
+                if grid[i][j] in ('w', 'W'):
+                    grid[i][j] = '.'
+
+        for i in range(10):
+            string += ' '.join(grid[i]) + '   ' + str(self.rows[i]) + '\n'
         string += '\n'
         for i in range(10):
             string += str(self.columns[i]) + ' '
@@ -109,13 +122,17 @@ class Board:
 
         if n == 1:
             for i in range(10):
+                if self.get_row_pieces(i) + n > self.rows[i]:
+                    continue
                 for j in range(10):
-                    if self.get_value(i, j) == '.':
+                    if self.get_column_pieces(j) + n > self.columns[j]:
+                        continue
+                    if self.get_value(i, j) == None:
                         actions += [((i, j), n, 'H')]
             return actions
 
         for i in range(10):
-            if self.get_free_row_positions(i) < n:
+            if self.get_row_pieces(i) + n > self.rows[i]:
                 continue
             for j in range(10 - n + 1):
                 if self.get_value(i, j) in ('L', None) and \
@@ -133,7 +150,7 @@ class Board:
                     actions += [((i, j), n, 'H')]
  
         for j in range(10):
-            if self.get_free_column_positions(j) < n:
+            if self.get_column_pieces(j) + n > self.columns[j]:
                 continue
             for i in range(10 - n + 1):
                 if self.get_value(i, j) in ('T', None) and \
@@ -145,14 +162,14 @@ class Board:
                     
                     if n > 2 and not self.get_value(i+1, j) in ('M', None):
                         continue
-                    if n > 3 and self.get_value(i+2, j) in ('M', None):
+                    if n > 3 and not self.get_value(i+2, j) in ('M', None):
                         continue
                     
                     actions += [((i, j), n, 'V')]
 
         return actions
     
-    def set_n_boat(self, row : int, col : int, n : int, orientation : int) -> None: # TODO tipo da orientation?
+    def set_n_boat(self, row : int, col : int, n : int, orientation : str) -> None:
         """Insere um barco de tamanho n a começar nas coordenadas (row, col),
         com orientação horizontal ou vertical."""
         if n == 1:
@@ -187,13 +204,14 @@ class Board:
         else: print("PROBLEMA no set_n_boat") # TODO remover
 
         if orientation == 'H':
-            for i in range(row - 1, row + n):
-                for j in range(col - 1, col + 1):
+            for i in range(row - 1, row + 2):
+                for j in range(col - 1, col + n + 1):
                     if self.get_value(i, j) == None: self.set_value(i, j, 'w')
         elif orientation == 'V':
-            for j in range(col - 1, col + n):
-                for i in range(row - 1, row + 1):
+            for j in range(col - 1, col + 2):
+                for i in range(row - 1, row + n + 1):
                     if self.get_value(i, j) == None: self.set_value(i, j, 'w')
+        else: print("PROBLEMA no set_n_boat") # TODO remover
 
 
     @staticmethod
@@ -236,15 +254,14 @@ class Bimaru(Problem):
         """O construtor especifica o estado inicial."""
         self.initial = BimaruState(board)
         self.initial_clear()
-        self.initial_possible_actions()
 
     def actions(self, state: BimaruState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         for n in range(4, 0, -1):
             if state.boats[n] > 0:
-                return state.boats_possible_actions[n]
-        else: print("PROBLEMA no actions") # TODO remover
+                return state.board.possible_n_boat_actions(n)
+        print("\nPROBLEMA no actions\n") # TODO remover
 
     def result(self, state: BimaruState, action):
         """Retorna o estado resultante de executar a 'action' sobre
@@ -261,20 +278,9 @@ class Bimaru(Problem):
 
         new_state = BimaruState(board)
         new_state.boats = {i : state.boats[i] for i in state.boats.keys()}
-        new_state.boats_possible_actions = {i : [((a,b),c,d) for ((a,b),c,d) in state.boats_possible_actions[i]] for i in state.boats_possible_actions.keys()}
         new_state.boats[n] -= 1
 
-        if new_state.boats[n] == 0:
-            new_state.boats_possible_actions[n] = []
-        else:
-            new_state.boats_possible_actions[n].remove(action) # TODO falta remover as ações que são incompativeis
-
         return new_state
-        
-        # alterar o valor das linhas e colunas para nao ter de correr as funcoes de get_row_positions ?
-
-        # TODO
-        # action = (row, col, boat, orientation)
 
     def goal_test(self, state: BimaruState):
         """Retorna True se e só se o estado passado como argumento é
@@ -347,10 +353,8 @@ class Bimaru(Problem):
         for (neighbour_i, neighbour_j) in neighbours:
             if board.is_empty(neighbour_i, neighbour_j):
                 board.set_value(neighbour_i, neighbour_j, 'w')
-    
-    def initial_possible_actions(self) -> None:
-        for i in range(1, 5):
-            self.initial.boats_possible_actions[i] = board.possible_n_boat_actions(i)
+        
+        print(board) # TODO remover
 
     # TODO: outros metodos da classe
     # TODO: rever incoerencia na utilizacao de (i, j) e (row, col)
