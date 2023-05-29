@@ -20,7 +20,6 @@ from search import (
 
 class BimaruState:
     state_id = 0
-    boats = {1 : 4, 2 : 3, 3 : 2, 4 : 1} # Barcos disponíveis
 
     def __init__(self, board):
         self.board = board
@@ -35,6 +34,9 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
+
+    boats = {1 : 4, 2 : 3, 3 : 2, 4 : 1} # Barcos disponíveis
+
     def __init__(self, rows, columns, grid) -> None:
         self.rows = rows
         self.columns = columns
@@ -43,25 +45,22 @@ class Board:
     def __str__(self) -> str:
         string = ""
 
-        # # TODO trocar as aguas para pontos aqui
-        # for i in range(10):
-        #     string += ' '.join(self.grid[i]) + '   ' + str(self.rows[i]) + '\n'
-        # string += '\n'
-        # for i in range(10):
-        #     string += str(self.columns[i]) + ' '
-        # return string
-
         grid = [[v for v in row] for row in self.grid]
         for i in range(10):
             for j in range(10):
-                if grid[i][j] in ('w', 'W'):
+                if grid[i][j] == 'w':
                     grid[i][j] = '.'
-
+        
+        # Testes
         for i in range(10):
             string += ' '.join(grid[i]) + '   ' + str(self.rows[i]) + '\n'
-        string += '\n'
         for i in range(10):
             string += str(self.columns[i]) + ' '
+        string += '\n'
+
+        # Mooshak
+        string = '\n'.join([''.join(row) for row in grid])
+    
         return string
 
     def get_value(self, row: int, col: int) -> str:
@@ -81,6 +80,9 @@ class Board:
         if row < 0 or col < 0 or row > 9 or col > 9:
             return
         self.grid[row][col] = value
+        if value != 'w':
+            self.rows[row] -= 1
+            self.columns[col] -= 1
 
     def adjacent_vertical_values(self, row: int, col: int):# -> (str, str): TODO
         """Devolve os valores imediatamente acima e abaixo,
@@ -110,11 +112,11 @@ class Board:
 
     def is_row_complete(self, row : int) -> bool:
         """Devolve True se a linha estiver completa e False caso contrário."""
-        return self.get_row_pieces(row) == self.rows[row]
+        return self.rows[row] == 0
     
     def is_column_complete(self, col : int) -> bool:
         """Devolve True se a coluna estiver completa e False caso contrário."""
-        return self.get_column_pieces(col) == self.columns[col]
+        return self.columns[col] == 0
 
     def possible_n_boat_actions(self, n : int) -> list:
         """Devolve uma lista com as posições livres para colocar um barco de tamanho n."""
@@ -122,19 +124,26 @@ class Board:
 
         if n == 1:
             for i in range(10):
-                if self.get_row_pieces(i) + n > self.rows[i]:
+                if n > self.rows[i]:
                     continue
                 for j in range(10):
-                    if self.get_column_pieces(j) + n > self.columns[j]:
+                    valid = True
+                    if n > self.columns[j]:
                         continue
                     if self.get_value(i, j) == None:
-                        actions += [((i, j), n, 'H')]
+                        for a in range(i-1, i+2):
+                            for b in range(j-1, j+2):
+                                if self.get_value(a, b) not in ('W', 'w', None):
+                                    valid = False
+                        if valid:
+                            actions += [((i, j), n, 'H')]
             return actions
 
         for i in range(10):
-            if self.get_row_pieces(i) + n > self.rows[i]:
-                continue
             for j in range(10 - n + 1):
+                valid = True
+                new_in_row = n
+                new_in_col = [1] * n
                 if self.get_value(i, j) in ('L', None) and \
                     self.get_value(i, j+n-1) in ('R', None) and \
                     self.get_value(i, j-1) in ('W', 'w', None) and \
@@ -142,17 +151,39 @@ class Board:
                     self.get_value(i, j-2) != 'L' and \
                     self.get_value(i, j+n+1) != 'R':
 
-                    if n > 2 and not self.get_value(i, j+1) in ('M', None):
-                        continue
-                    if n > 3 and not self.get_value(i, j+2) in ('M', None):
-                        continue
+                    if self.get_value(i, j) == 'L':
+                        new_in_row -= 1
+                        new_in_col[0] = 0
+                    if self.get_value(i, j+n-1) == 'R':
+                        new_in_row -= 1
+                        new_in_col[n-1] = 0
 
-                    actions += [((i, j), n, 'H')]
- 
+                    if n > 2:
+                        if self.get_value(i, j+1) not in ('M', None):
+                            continue
+                        if self.get_value(i, j+1) == 'M':
+                            new_in_row -= 1
+                            new_in_col[1] = 0
+                    if n > 3:
+                        if self.get_value(i, j+2) not in ('M', None):
+                            continue
+                        if self.get_value(i, j+2) == 'M':
+                            new_in_row -= 1
+                            new_in_col[2] = 0
+
+                    if self.rows[i] - new_in_row < 0:
+                        continue
+                    for col in range(j, j+n):
+                        if self.columns[col] - new_in_col[col - j] < 0:
+                            valid = False
+                    
+                    if valid: actions += [((i, j), n, 'H')]
+
         for j in range(10):
-            if self.get_column_pieces(j) + n > self.columns[j]:
-                continue
             for i in range(10 - n + 1):
+                valid = True
+                new_in_row = [1] * n
+                new_in_col = n
                 if self.get_value(i, j) in ('T', None) and \
                     self.get_value(i+n-1, j) in ('B', None) and \
                     self.get_value(i-1, j) in ('W', 'w', None) and \
@@ -160,12 +191,33 @@ class Board:
                     self.get_value(i-2, j) != 'T' and \
                     self.get_value(i+n+1, j) != 'B':
                     
-                    if n > 2 and not self.get_value(i+1, j) in ('M', None):
+                    if self.get_value(i, j) == 'T':
+                        new_in_col -= 1
+                        new_in_row[0] = 0
+                    if self.get_value(i+n-1, j) == 'B':
+                        new_in_col -= 1
+                        new_in_row[n-1] = 0
+
+                    if n > 2:
+                        if self.get_value(i+1, j) not in ('M', None):
+                            continue
+                        if self.get_value(i+1, j) == 'M':
+                            new_in_col -= 1
+                            new_in_row[1] = 0
+                    if n > 3:
+                        if self.get_value(i+2, j) not in ('M', None):
+                            continue
+                        if self.get_value(i+2, j) == 'M':
+                            new_in_col -= 1
+                            new_in_row[2] = 0
+
+                    if self.columns[j] - new_in_col < 0:
                         continue
-                    if n > 3 and not self.get_value(i+2, j) in ('M', None):
-                        continue
+                    for row in range(i, i+n):
+                        if self.rows[row] - new_in_row[row - i] < 0:
+                            valid = False
                     
-                    actions += [((i, j), n, 'V')]
+                    if valid: actions += [((i, j), n, 'V')]
 
         return actions
     
@@ -225,23 +277,35 @@ class Board:
             > from sys import stdin
             > line = stdin.readline().split()
         """
-        f = open("instances/instance01.txt", "r")
-        # rows = sys.stdin.readline().split()[1:]
-        rows = f.readline().split()[1:]
+        Mooshak = True
+
+        if Mooshak:
+            rows = sys.stdin.readline().split()[1:]
+        else:
+            f = open("instances/instance01.txt", "r")
+            rows = f.readline().split()[1:]
+        
         rows = [eval(row) for row in rows]
 
-        # columns = sys.stdin.readline().split()[1:]
-        columns = f.readline().split()[1:]
+        if Mooshak:
+            columns = sys.stdin.readline().split()[1:]
+        else:
+            columns = f.readline().split()[1:]
+        
         columns = [eval(col) for col in columns]
         
-        # hints = eval(sys.stdin.readline().split()[0])
-        hints = eval(f.readline().split()[0])
+        if Mooshak:
+            hints = eval(sys.stdin.readline().split()[0])
+        else:
+            hints = eval(f.readline().split()[0])
 
         grid = [['.'] * 10 for _ in range(10)]
 
         for _ in range(hints):
-            # hint = sys.stdin.readline().split()
-            hint = f.readline().split()
+            if Mooshak:
+                hint = sys.stdin.readline().split()
+            else:
+                hint = f.readline().split()
             row = eval(hint[1])
             col = eval(hint[2])
             grid[row][col] = hint[3]
@@ -254,14 +318,15 @@ class Bimaru(Problem):
         """O construtor especifica o estado inicial."""
         self.initial = BimaruState(board)
         self.initial_clear()
+        self.initial_boats()
 
     def actions(self, state: BimaruState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         for n in range(4, 0, -1):
-            if state.boats[n] > 0:
+            if state.board.boats[n] > 0:
                 return state.board.possible_n_boat_actions(n)
-        print("\nPROBLEMA no actions\n") # TODO remover
+        return []
 
     def result(self, state: BimaruState, action):
         """Retorna o estado resultante de executar a 'action' sobre
@@ -273,12 +338,12 @@ class Bimaru(Problem):
         n = action[1]
         orientation = action[2]
 
-        board = Board(state.board.rows, state.board.columns, [[v for v in row] for row in state.board.grid])
+        board = Board([v for v in state.board.rows], [v for v in state.board.columns], [[v for v in row] for row in state.board.grid])
         board.set_n_boat(i, j, n, orientation)
+        board.boats = {i : state.board.boats[i] for i in state.board.boats.keys()}
+        board.boats[n] -= 1
 
         new_state = BimaruState(board)
-        new_state.boats = {i : state.boats[i] for i in state.boats.keys()}
-        new_state.boats[n] -= 1
 
         return new_state
 
@@ -290,7 +355,7 @@ class Bimaru(Problem):
             if not state.board.is_row_complete(i) or not state.board.is_column_complete(i):
                 return False
         
-        for number in state.boats:
+        for number in state.board.boats.values():
             if number > 0:
                 return False
         # TODO verificar se as águas estão todas (?)
@@ -305,35 +370,33 @@ class Bimaru(Problem):
     def initial_clear(self) -> None:
         board = self.initial.board
         
-        # Preencher linhas e colunas maximizadas com água
-        for i in range(10):
-            if board.is_row_complete(i):
-                for j in range(10):
-                    if board.is_empty(i, j):
-                        board.set_value(i, j, 'w')
-            if board.is_column_complete(i):
-                for j in range(10):
-                    if board.is_empty(j ,i):
-                        board.set_value(j, i, 'w')
-        
-        # Rodear barcos com água
+        # Rodear peças com água
         neighbours = []
         M_positions = []
         for i in range(10): # Encontrar posições triviais para colocar águas
+            if board.is_row_complete(i):
+                continue
             for j in range(10):
-                if board.grid[i][j] == 'C':
+                if board.is_column_complete(j):
+                    continue
+                board.rows[i] -= 1
+                board.columns[j] -= 1
+                if board.get_value(i, j) == 'C':
                     neighbours += [(i-1, j), (i+1, j), (i, j-1), (i, j+1), (i-1, j-1), (i-1, j+1), (i+1, j-1), (i+1, j+1)]
-                if board.grid[i][j] == 'T':
+                elif board.get_value(i, j) == 'T':
                     neighbours += [(i-1, j), (i-1, j-1), (i, j-1), (i+1, j-1), (i+2, j-1), (i-1, j+1), (i, j+1), (i+1, j+1), (i+2, j+1)]
-                if board.grid[i][j] == 'L':
+                elif board.get_value(i, j) == 'L':
                     neighbours += [(i, j-1), (i-1, j-1), (i-1, j), (i-1, j+1), (i-1, j+2), (i+1, j-1), (i+1, j), (i+1, j+1), (i+1, j+2)]
-                if board.grid[i][j] == 'B':
+                elif board.get_value(i, j) == 'B':
                     neighbours += [(i+1, j), (i+1, j-1), (i, j-1), (i-1, j-1), (i-2, j-1), (i+1, j+1), (i, j+1), (i-1, j+1), (i-2, j+1)]
-                if board.grid[i][j] == 'R':
+                elif board.get_value(i, j) == 'R':
                     neighbours += [(i, j+1), (i-1, j+1), (i-1, j), (i-1, j-1), (i-1, j-2), (i+1, j+1), (i+1, j), (i+1, j-1), (i+1, j-2)]
-                if board.grid[i][j] == 'M':
+                elif board.get_value(i, j) == 'M':
                     neighbours += [(i-1, j-1), (i+1, j-1), (i+1, j+1), (i-1, j+1)]
                     M_positions += [(i, j)]
+                else:
+                    board.rows[i] += 1
+                    board.columns[j] += 1
         
         for (neighbour_i, neighbour_j) in neighbours:
             if board.is_empty(neighbour_i, neighbour_j):
@@ -341,20 +404,53 @@ class Bimaru(Problem):
         neighbours = []
         
         for (i, j) in M_positions: # Encontrar posições triviais ao redor de peças centrais
-            if i == 0 or board.grid[i-1][j] in ("W", "w"):
+            if i == 0 or board.get_value(i-1, j) in ("W", "w"):
                 neighbours += [(i+1, j-2), (i+1, j), (i+1, j+2)]
-            if i == 10 or board.grid[i+1][j] in ("W", "w"):
+            if i == 10 or board.get_value(i+1, j) in ("W", "w"):
                 neighbours += [(i-1, j-2), (i-1, j), (i-1, j+2)]
-            if j == 0 or board.grid[i][j-1] in ("W", "w"):
+            if j == 0 or board.get_value(i, j-1) in ("W", "w"):
                 neighbours += [(i-2, j+1), (i, j+1), (i+2, j+1)]
-            if j == 10 or board.grid[i][j+1] in ("W", "w"):
+            if j == 10 or board.get_value(i, j+1) in ("W", "w"):
                 neighbours += [(i-2, j-1), (i, j-1), (i+2, j-1)]
         
         for (neighbour_i, neighbour_j) in neighbours:
             if board.is_empty(neighbour_i, neighbour_j):
                 board.set_value(neighbour_i, neighbour_j, 'w')
+        # TODO tirar a repeticao de codigo anterior (?) e meter isto a correr de novo sempre que for feita alguma alteracao
         
-        print(board) # TODO remover
+        # Preencher linhas e colunas maximizadas com água
+        for a in range(10):
+            if board.is_row_complete(a):
+                for b in range(10):
+                    if board.is_empty(a, b):
+                        board.set_value(a, b, 'w')
+            if board.is_column_complete(a):
+                for b in range(10):
+                    if board.is_empty(b ,a):
+                        board.set_value(b, a, 'w')
+    
+    def initial_boats(self) -> None:
+        board = self.initial.board
+        
+        for i in range(10):
+            for j in range(10):
+                if board.get_value(i, j) == 'C':
+                    board.boats[1] -= 1
+                for n in range(2, 5):
+                    if board.get_value(i, j) == 'L':
+                        if board.get_value(i, j+n-1) == 'R':
+                            if n > 2 and board.get_value(i, j+1) != 'M':
+                                continue
+                            if n > 3 and board.get_value(i, j+2) != 'M':
+                                continue
+                            board.boats[n] -= 1
+                    elif board.get_value(i, j) == 'T':
+                        if board.get_value(i+n-1, j) == 'B':
+                            if n > 2 and board.get_value(i+1, j) != 'M':
+                                continue
+                            if n > 3 and board.get_value(i+2, j) != 'M':
+                                continue
+                            board.boats[n] -= 1
 
     # TODO: outros metodos da classe
     # TODO: rever incoerencia na utilizacao de (i, j) e (row, col)
@@ -367,15 +463,9 @@ if __name__ == "__main__":
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
     board = Board.parse_instance()
-    print(board, '\n')
+    # print(board, '\n')
     problem = Bimaru(board)
     goal_node = depth_first_tree_search(problem)
-    print("Is goal?", problem.goal_test(goal_node.state))
-    print("Solution:\n", goal_node.state.board.print(), sep="")
-
-    # s0 = BimaruState(board)
-    # print(board)
-    # n = 4
-    # print(f"\n### {n}-boat ###")
-    # for action in s0.boats_possible_actions[n]:
-    #     print(action)
+    print(goal_node.state.board, sep = "")
+    # print("Is goal?", problem.goal_test(goal_node.state))
+    # print("Solution:\n", goal_node.state.board, sep="")
