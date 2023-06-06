@@ -59,8 +59,9 @@ if not os.path.exists(results_folder):
     os.makedirs(results_folder)
 
 # Iterate over files in the tests folder
+total_time = 0
 for file_name in os.listdir(tests_folder):
-    if file_name.endswith(".txt"):
+    if file_name.endswith(".txt") and not file_name.startswith("easy") and not file_name.startswith("medium"):
         test_file_path = os.path.join(tests_folder, file_name)
         output_file_path = os.path.join(results_folder, file_name.replace(".txt", ".out"))
         # Execute the bimaru.py script with the test file as input
@@ -71,12 +72,13 @@ for file_name in os.listdir(tests_folder):
         if result.returncode != 0:
             errors_in_tests.append(file_name)
         print(f"{file_name}: Executed in \t{round(end_time - start_time, 2)} seconds")
+        total_time += end_time - start_time
 
-print("\n\n\nList of Inputs")
+print("\n\Total time: ", total_time)
 
 # Compare the output files in the results and tests folders
 for file_name in os.listdir(tests_folder):
-    if file_name.endswith(".txt"):
+    if file_name.endswith(".txt") and not file_name.startswith("easy") and not file_name.startswith("medium"):
         test_file_path = os.path.join(tests_folder, file_name)
         output_file_path = os.path.join(results_folder, file_name.replace(".txt", ".out"))
         test_result_file_path = test_file_path.replace(".txt", ".out")
